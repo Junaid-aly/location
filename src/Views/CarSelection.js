@@ -1,17 +1,19 @@
-
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   Button,
   StyleSheet,
   Image,
+  Modal,
   TouchableOpacity,
+  CustomButton,
 } from "react-native";
+import { rideRequestToFirebase } from "../../config/firebase";
 
 function CarSelection({ route }) {
+  const [isRequestAccepted, setIsRequestAccepted] = useState(false);
   const { pickup, destination } = route.params;
-
   const fares = {
     bike: 50,
     rickshaw: 88,
@@ -22,27 +24,38 @@ function CarSelection({ route }) {
   };
 
   const images = {
-    bike: require("./bike.jpg"), // Replace 'bike.png' with the path to your bike image
-    rickshaw: require("./Rickshaw.jpg"), // Replace 'rickshaw.png' with the path to your rickshaw image
-    car: require("./civic.jpeg"), // Replace 'car.png' with the path to your car image
-    truck: require("./truck.jpeg"), // Replace 'truck.png' with the path to your truck image
+    bike: require("./Images/bike.jpg"),
+    rickshaw: require("./Images/Rickshaw.jpg"),
+    car: require("./Images/civic.jpeg"),
+    truck: require("./Images/truck.jpeg"),
   };
 
-  const calculateFare = (vehicle) => {
+  const calculateFare = async (vehicle) => {
     const { latitude: pickupLat, longitude: pickupLong } = pickup.geocodes.main;
     const { latitude: destinationLat, longitude: destinationLong } =
       destination.geocodes.main;
+
     const distance = calcCrow(
       pickupLat,
       pickupLong,
       destinationLat,
       destinationLong
     );
-    const fare = fares[vehicle] * distance;
-    alert("RS." + fare.toFixed(2));
-  };
 
-  // Function to calculate distance between two locations
+    const fare = fares[vehicle] * distance;
+    alert("Your ride request is pending...");
+    alert("RS." + fare.toFixed(2));
+
+    await rideRequestToFirebase({
+      pickup,
+      destination,
+      carType: vehicle,
+      fare,
+      timestamp: Date.now(),
+    });
+  };
+  
+
   function calcCrow(lat1, lon1, lat2, lon2) {
     var R = 6371; // Radius of the earth in km
     var dLat = toRad(lat2 - lat1);
@@ -57,7 +70,6 @@ function CarSelection({ route }) {
     return d;
   }
 
-  // Converts numeric degrees to radians
   function toRad(Value) {
     return (Value * Math.PI) / 180;
   }
@@ -77,25 +89,6 @@ function CarSelection({ route }) {
           {destination.name}, {destination.location.address}
         </Text>
       </View>
-
-      {/*       
-      <View style={styles.Button}>
-        <TouchableOpacity onPress={() => calculateFare("bike")}>
-          <Image source={images.bike} style={styles.image} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => calculateFare("rickshaw")}>
-          <Image source={images.rickshaw} style={styles.image} />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => calculateFare("car")}>
-          <Image source={images.car} style={styles.image} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => calculateFare("truck")}>
-          <Image source={images.truck} style={styles.image} />
-        </TouchableOpacity>
-        
-        
-      </View> */}
 
       <View style={styles.Button}>
         <TouchableOpacity onPress={() => calculateFare("bike")}>
@@ -120,13 +113,19 @@ function CarSelection({ route }) {
         </TouchableOpacity>
         {/* Add similar TouchableOpacity components for other vehicle types */}
       </View>
-
-      <View style={styles.buttonContainer}>
-        <Button
-          title="Go Now"
-          // onPress={() => navigation.navigate("CarSelection", { pickup })} // Assuming you don't need this navigation
-        />
-      </View>
+      <Modal
+        visible={isRequestAccepted}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsRequestAccepted(false)}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalText}>Request Accepted!</Text>
+          <CustomButton
+            title="Close"
+            onPress={() => setIsRequestAccepted(false)}
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -138,21 +137,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   imageContainer: {
-    alignItems: "center", // Center items horizontally
-    marginRight: 10, // Add some margin between each image
+    alignItems: "center",
+    marginRight: 10,
   },
   image: {
-    width: 100,
-    height: 100,
+    width: 110,
+    height: 110,
+    margin: 10,
     borderRadius: 50,
-    resizeMode: "cover", // Adjust image inside the container
+    resizeMode: "cover",
   },
   Button: {
     marginTop: 10,
+    // padding:30,
+    margin: 20,
     width: "100%",
-    alignItems: "center", // Center items horizontally
-    flexDirection: "row", // Arrange items horizontally
-    justifyContent: "center", // Center items horizontally
+    alignItems: "center",
+    flexDirection: "column",
+    justifyContent: "center",
   },
   buttonContainer: {
     width: 300,
@@ -166,6 +168,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
-
 
 export default CarSelection;
